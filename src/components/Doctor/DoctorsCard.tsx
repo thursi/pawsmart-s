@@ -1,30 +1,31 @@
-"use-client";
-import Image from "next/image";
-import doctorImage from "../../../public/images/doctor.png";
-import { User, BriefcaseMedical, ChevronDown } from "lucide-react"; // Import icons
-import { useEffect, useRef, useState } from "react";
+'use-client';
+import Image from 'next/image';
+import doctorImage from '../../../public/images/doctor.png';
+import { User, BriefcaseMedical, ChevronDown } from 'lucide-react'; // Import icons
+import { useEffect, useRef, useState } from 'react';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
-import { DayTimeSlotResponses } from "@/lib/typings";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Calendar } from "../ui/calendar";
-import { Button } from "../ui/button";
-import { useAuthStore } from "@/store/authStore";
-import { useRouter } from "next/navigation";
-import SignInDialog from "../auth/SignInDialog";
-import { loginUser } from "@/api/Auth/route";
-import { toast } from "sonner";
-import { usePetStore } from "@/store/petStore";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { createAppointment } from "@/api/Appointment/route";
+} from '../ui/select';
+import { loadStripe } from '@stripe/stripe-js';
+import { DayTimeSlotResponses } from '@/lib/typings';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Calendar } from '../ui/calendar';
+import { Button } from '../ui/button';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import SignInDialog from '../auth/SignInDialog';
+import { loginUser } from '@/api/Auth/route';
+import { toast } from 'sonner';
+import { usePetStore } from '@/store/petStore';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createAppointment } from '@/api/Appointment/route';
 
 interface DoctorCardProps {
   id?: string;
@@ -53,20 +54,20 @@ interface DoctorCardProps {
 
 const formSchema = z.object({
   reason: z
-    .string({ required_error: "Reason is required" })
-    .min(1, "Reason is required"),
+    .string({ required_error: 'Reason is required' })
+    .min(1, 'Reason is required'),
   note: z.string().optional(),
-  medium: z.enum(["VIRTUAL", "PHYSICAL"]),
+  medium: z.enum(['VIRTUAL', 'PHYSICAL']),
   emergencyReason: z.string().optional(),
   emergency: z.boolean().default(false),
-  medicalCareTypes: z.enum(["OPD", "IPD", "OT"], {
-    required_error: "Please select a medical care type",
+  medicalCareTypes: z.enum(['OPD', 'IPD', 'OT'], {
+    required_error: 'Please select a medical care type',
   }),
   medicalConditions: z
     .array(z.string(), {
-      required_error: "Please enter at least one medical condition",
+      required_error: 'Please enter at least one medical condition',
     })
-    .min(1, "Please enter at least one medical condition"),
+    .min(1, 'Please enter at least one medical condition'),
 });
 
 const DoctorCard: React.FC<DoctorCardProps> = ({
@@ -94,7 +95,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
       //   setIsDialogOpen(false);
       //   // router.push('/');
       // }
-      if (response.success && response.role === "USER") {
+      if (response.success && response.role === 'USER') {
         setLogin(response);
         toast.success(response.message);
         setLoginModal(false);
@@ -105,8 +106,8 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
         toast.error(response.message);
       }
     } catch (error) {
-      toast.error("Oops! Something went wrong. Try again.");
-      console.error("Sign-in failed:", error);
+      toast.error('Oops! Something went wrong. Try again.');
+      console.error('Sign-in failed:', error);
     } finally {
     }
   };
@@ -150,7 +151,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
           return; // Do nothing if the click is inside the Select dropdown
         }
         // Check if the click is inside the Select dropdown
-        const popoverContent = document.querySelector(".popover-content");
+        const popoverContent = document.querySelector('.popover-content');
         if (popoverContent && popoverContent.contains(event.target as Node)) {
           return; // Do nothing if the click is inside the Select dropdown
         }
@@ -163,15 +164,21 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
     };
 
     // Add event listener
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
 
     // Cleanup
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
   const handleBooking = async () => {
+    const stripe = await loadStripe(
+      process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY as string
+    );
+    if (!stripe) {
+      return;
+    }
     try {
       console.log(selectedTime);
       const res = await createAppointment({
@@ -183,13 +190,16 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
 
       if (res.success) {
         toast.success(res.message);
+        await stripe.redirectToCheckout({
+          sessionId: res.sessionId,
+        });
         setExpanded(false);
       } else {
         toast.error(res.message);
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something went wrong. Please try again.");
+      toast.error('Something went wrong. Please try again.');
     }
   };
 
@@ -198,7 +208,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
     today.setHours(0, 0, 0, 0); // Reset time to compare only dates
 
     // Get the day of the week for the given date
-    const dayOfWeek = date.toLocaleString("en-US", { weekday: "long" });
+    const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long' });
     // Disable dates before today and dates that don't match any available day in dayTimeSlotResponses
     return (
       date < today ||
@@ -241,7 +251,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
   //       }, {} as Record<number, { hospitalId: number; hospitalName: string; timeSlots: any[] }>)
   //   : null;
 
-  console.log("form values", form.formState.errors, form.getValues());
+  console.log('form values', form.formState.errors, form.getValues());
 
   return (
     <div
@@ -250,16 +260,22 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
         e.stopPropagation();
       }}
       className={`${
-        expanded ? "max-h-[500px]" : "h-fit"
+        expanded ? 'max-h-[500px]' : 'h-fit'
       } cursor-pointer flex flex-col transition-all duration-300 ease-in-out overflow-hidden relative hover:scale-105 shadow-lg rounded-lg p-4`}
     >
-      <div className={`relative z-10 `}>
+      <div
+        onClick={() => {
+          router.push(`/doctor-details/${id}`);
+        }}
+        className={`relative z-10 `}
+      >
         <div
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             setExpanded(!expanded);
           }}
-          className={`absolute duration-300 transition-all bottom-1 right-1 ${
-            expanded ? "rotate-180" : "rotate-0"
+          className={`absolute duration-300 transition-all bottom-1 p-2 rounded-full hover:scale-105 hover:bg-gray-100 active:scale-95 right-1 ${
+            expanded ? 'rotate-180' : 'rotate-0'
           }`}
         >
           <ChevronDown size={18} />
@@ -268,7 +284,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
           <div className="rounded-t-xl">
             <Image
               src={preSignedUrl ? preSignedUrl : doctorImage}
-              alt={"image"}
+              alt={'image'}
               className="w-auto h-48 object-cover"
               width={300}
               height={150}
@@ -282,7 +298,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
         </div>
         {specializationName && (
           <div className="text-start text-sm text-gray-600 flex items-center gap-2">
-            <BriefcaseMedical className="w-4 h-4 text-gray-500" />{" "}
+            <BriefcaseMedical className="w-4 h-4 text-gray-500" />{' '}
             {/* Specialization Icon */}
             {specializationName}
           </div>
@@ -293,8 +309,8 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
       <div
         className={`${
           expanded
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 hidden -translate-y-full"
+            ? 'opacity-100 translate-y-0'
+            : 'opacity-0 hidden -translate-y-full'
         } transform  transition-all duration-300 flex flex-col gap-2 ease-in-out mt-4`}
       >
         {login ? (
@@ -311,10 +327,10 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
                 >
                   <div
                     className={`font-semibold ${
-                      selectedDate ? "text-gray-700" : ""
+                      selectedDate ? 'text-gray-700' : ''
                     }text-gray-400`}
                   >
-                    {selectedDate || "Select a date"}
+                    {selectedDate || 'Select a date'}
                   </div>
                 </PopoverTrigger>
                 <PopoverContent
@@ -326,10 +342,10 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
                     fromDate={new Date()}
                     disabled={isDateDisabled}
                     onDayClick={(e) => {
-                      setSelectedDate(new Date(e).toISOString().split("T")[0]);
+                      setSelectedDate(new Date(e).toISOString().split('T')[0]);
                       setSelectedDay(
                         e
-                          .toLocaleString("en-US", { weekday: "long" })
+                          .toLocaleString('en-US', { weekday: 'long' })
                           .toUpperCase()
                       );
                       setCalenderOpen(false);
@@ -343,14 +359,14 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
             {selectedDate && (
               <div className="w-full">
                 <Select
-                  value={selectedHospital?.toString() || ""} // Controlled value
+                  value={selectedHospital?.toString() || ''} // Controlled value
                   onValueChange={(value) => setSelectedHospital(Number(value))}
                 >
                   <SelectTrigger className="select-trigger">
                     <SelectValue placeholder="Select a hospital" />
                   </SelectTrigger>
                   <SelectContent className="select-dropdown" ref={selectRef}>
-                    {" "}
+                    {' '}
                     {/* Add a class to the Select dropdown */}
                     {dayTimeSlotResponses
                       ?.find((day) => day.day === selectedDay)
@@ -368,25 +384,29 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
             )}
             {selectedDate && selectedHospital && (
               <Select
-                value={selectedPet?.toString() || ""} // Controlled value
+                value={selectedPet?.toString() || ''} // Controlled value
                 onValueChange={(value) => setSelectedPet(Number(value))}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a Pet" />
                 </SelectTrigger>
                 <SelectContent className="select-dropdown" ref={selectRef}>
-                  {" "}
+                  {' '}
                   {/* Add a class to the Select dropdown */}
                   {filteredPets?.length > 0 ? (
                     filteredPets?.map((pet, index) => (
-                      <SelectItem key={index} value={pet.id.toString()}>
+                      <SelectItem
+                        key={index}
+                        // @ts-expect-error Temporary workaround - fix typings later
+                        value={pet.id.toString()}
+                      >
                         {pet.name}
                       </SelectItem>
                     ))
                   ) : (
                     <SelectItem
                       onSelect={() => {
-                        console.log("No Pets Available");
+                        console.log('No Pets Available');
                       }}
                       value=""
                     >
@@ -418,8 +438,8 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
                         key={index}
                         className={`text-[13px] transition-all ${
                           selectedAppointmentTime === time
-                            ? "bg-white text-primary border-primary border-[1px]"
-                            : "text-white bg-primary"
+                            ? 'bg-white text-primary border-primary border-[1px]'
+                            : 'text-white bg-primary'
                         } cursor-pointer font-semibold  px-2 py-1 rounded-lg w-1/3`}
                       >
                         {time?.appointmentTime}
@@ -443,7 +463,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
                   }}
                   className="text-white mb-1"
                 >
-                  {isLoggedIn ? "Book Now" : "Login to book"}
+                  {isLoggedIn ? 'Book Now' : 'Login to book'}
                 </Button>
               )}
           </>
@@ -456,8 +476,8 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
         onOpenChange={setLoginModal}
         ref={dialogRef}
         onSignIn={(values) => handleSignIn(values)}
-        onSignUp={() => console.log("values")}
-        onForgotPassword={() => console.log("values")}
+        onSignUp={() => console.log('values')}
+        onForgotPassword={() => console.log('values')}
       />
     </div>
   );
@@ -488,7 +508,7 @@ const DoctorsCard: React.FC<DoctorsCardProps> = ({
   description,
   doctors,
 }) => {
-  console.log("🚀 ~ doctors:", doctors);
+  console.log('🚀 ~ doctors:', doctors);
   return (
     <div className="w-full container pt-20 pb-20 px-0 md:px-7 mx-auto">
       <div className="border-l-2 border-red-500 pl-2">
@@ -505,16 +525,17 @@ const DoctorsCard: React.FC<DoctorsCardProps> = ({
             key={index}
             id={doctor.id}
             preSignedUrl={doctor.userResponse?.preSignedUrl}
-            name={`${doctor.userResponse?.firstName || ""} ${
-              doctor.userResponse?.lastName || ""
+            name={`${doctor.userResponse?.firstName || ''} ${
+              doctor.userResponse?.lastName || ''
             }`}
-            gender={doctor.userResponse?.gender || "Unknown"}
-            departmentName={doctor.specializationResponse?.name || "General"}
+            gender={doctor.userResponse?.gender || 'Unknown'}
+            departmentName={doctor.specializationResponse?.name || 'General'}
             specializationName={
-              doctor.specializationResponse?.name || "Specialist"
+              doctor.specializationResponse?.name || 'Specialist'
             }
             petResponses={doctor.petResponses}
             hospitalName={doctor.hospitalName}
+            // @ts-expect-error Temporary workaround - fix typings later
             dayTimeSlotResponses={doctor?.dayTimeSlotResponses}
           />
         ))}

@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { Award, PlusCircle, Stethoscope } from 'lucide-react';
+import { Award, Stethoscope, PlusCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import doctorImage from '../../../public/images/doctor.png';
 import { Pet } from '@/lib/typings';
 import { createAppointment } from '@/api/Appointment/route';
 import { toast } from 'sonner';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import NotificationComponent from './DocPopup';
 import { z } from 'zod';
 import {
@@ -19,7 +19,7 @@ import {
 } from '../ui/form';
 import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
-import { Input } from '../ui/input';
+import { Calendar } from '../ui/calendar';
 
 import {
   Select,
@@ -47,6 +47,7 @@ import {
   PetCreateProps,
 } from '@/api/Pet/route';
 import PetSelectionForm from '../Pet/create';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { usePetStore } from '@/store/petStore';
 
 const formSchema = z
@@ -123,19 +124,6 @@ interface Doctor {
   dayTimeSlotResponses: DayTimeSlot[];
 }
 
-// interface BookingFormData {
-//   bookingTimeId: number;
-//   petId?: number;
-//   bookingDate: string;
-//   appointmentTime: string;
-//   reason: string;
-//   note: string;
-//   medium: 'VIRTUAL' | 'PHYSICAL';
-//   guest: boolean;
-//   medicalCareTypes: 'OPD' | 'IPD';
-//   emergency: boolean;
-//   emergencyReason: string;
-// }
 interface NotificationState {
   isOpen: boolean;
   type: 'success' | 'error';
@@ -164,12 +152,15 @@ const useAvailableTimeSlots = (
 
   const isDateDisabled = (date: Date) => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Reset time to compare only dates
 
     if (date < today) {
       return true;
     }
+
+    // Get the day of the week for the given date
     const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long' });
+    // Disable dates before today and dates that don't match any available day in dayTimeSlotResponses
 
     return !dayTimeSlotResponses?.some(
       (day) => day.day === dayOfWeek.toUpperCase()
@@ -216,16 +207,12 @@ const DoctorBookingPage: React.FC<{
   filteredPets?: Pet[];
   isLoggedIn?: boolean;
 }> = ({ doctor, filteredPets, isLoggedIn }) => {
-  console.log('🚀 ~ doctor:', doctor);
-  const params = useParams<{ id: string; time: string; date: string }>();
+
+  console.log('isLoggedIn.........',isLoggedIn)
   const router = useRouter();
-  console.log('🚀 ~ params:', params);
   const searchParams = useSearchParams();
-  console.log('🚀 ~ query:', searchParams.get('hospitalId'));
   const time = searchParams.get('time');
-  console.log('🚀 ~ time:', time);
   const date = searchParams.get('date');
-  console.log('🚀 ~ date:', date);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -242,8 +229,6 @@ const DoctorBookingPage: React.FC<{
     },
   });
 
-  console.log(form.watch('appointmentTime'));
-
   // const initialFormState: FormValues = {
   //   bookingTimeId: 0,
   //   bookingDate: "",
@@ -257,8 +242,11 @@ const DoctorBookingPage: React.FC<{
   //   petId: 0,
   // };
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [calenderOpen, setCalenderOpen] = useState(false);
   const login = useAuthStore((state) => state.login);
+  console.log('🚀 ~ login:', login);
   const setFilteredPets = usePetStore((state) => state.setFilteredPets);
+  // const [isAddPetDialogOpen, setIsAddPetDialogOpen] = useState(false);
   const setLogin = useAuthStore((state) => state.setLogin);
   const [notification, setNotification] = useState<NotificationState>({
     isOpen: false,
@@ -267,31 +255,11 @@ const DoctorBookingPage: React.FC<{
     message: '',
   });
   const [bookingData, setBookingData] = useState<FormValues>(form.getValues());
-  const { setSelectedDate, availableTimeSlots } = useAvailableTimeSlots(
-    doctor.dayTimeSlotResponses,
-    date ? date : form.getValues().bookingDate
-  );
-
-  // const handleInputChange = (
-  //   e: React.ChangeEvent<
-  //     HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-  //   >
-  // ) => {
-  //   const { name, value } = e.target;
-  //   setBookingData((prev) => ({
-  //     ...prev,
-  //     [name]: value,
-  //   }));
-  // };
-
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-    setBookingData((prev) => ({
-      ...prev,
-      bookingDate: date,
-      appointmentTime: '',
-    }));
-  };
+  const { selectedDate, setSelectedDate, availableTimeSlots, isDateDisabled } =
+    useAvailableTimeSlots(
+      doctor.dayTimeSlotResponses,
+      date ? date : form.getValues().bookingDate
+    );
 
   const handleTimeChange = (timeSlot: TimeSlot) => {
     setBookingData((prev) => ({
@@ -303,9 +271,6 @@ const DoctorBookingPage: React.FC<{
 
   const onSubmit = async (data: FormValues) => {
     try {
-      // const selectedTimeSlot = availableTimeSlots.find(
-      //   (slot) => slot.appointmentTime === data.appointmentTime
-      // );
       const payload = {
         bookingTimeId: bookingData?.bookingTimeId,
         petId: data.petId,
@@ -346,12 +311,12 @@ const DoctorBookingPage: React.FC<{
     }
   };
 
-  // const formatDateToLocal = (date: Date) => {
-  //   const year = date.getFullYear();
-  //   const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-  //   const day = String(date.getDate()).padStart(2, '0');
-  //   return `${year}-${month}-${day}`; // Returns YYYY-MM-DD
-  // };
+  const formatDateToLocal = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`; // Returns YYYY-MM-DD
+  };
 
   const closeNotification = () => {
     setNotification((prev) => ({ ...prev, isOpen: false }));
@@ -389,10 +354,13 @@ const DoctorBookingPage: React.FC<{
   };
   const fetchUpdatedPetList = async () => {
     try {
+      if (!login?.userId) {
+        throw new Error('User ID is required but was not found.');
+      }
       const filterAppointmentList = await getPetFilterData({
         pageSize: 10,
         pageCount: 1,
-        userId: Number(login?.userId),
+        userId: parseInt(login.userId!),
       });
       setFilteredPets(filterAppointmentList.records);
     } catch (error) {
@@ -418,6 +386,7 @@ const DoctorBookingPage: React.FC<{
   };
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8">
+      
       <div className="gap-6 space-y-6 md:space-y-10">
         <Card className="bg-white shadow-lg w-full">
           <CardContent className="p-4 md:p-6">
@@ -517,26 +486,62 @@ const DoctorBookingPage: React.FC<{
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
-                        name="medicalCareTypes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Select Date</FormLabel>
+                        name="bookingDate"
+                        render={({ field }) => {
+                          console.log('🚀 ~ field:', field.value);
+                          return (
+                            <FormItem>
+                              <FormLabel>Select Date</FormLabel>
 
-                            <FormControl>
-                              <Input
-                                type="date"
-                                {...field}
-                                min={new Date().toISOString().split('T')[0]}
-                                disabled={!isLoggedIn}
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  handleDateChange(e.target.value);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                              <FormControl>
+                                <Popover
+                                  modal
+                                  onOpenChange={setCalenderOpen}
+                                  open={calenderOpen}
+                                >
+                                  <PopoverTrigger
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCalenderOpen(!calenderOpen);
+                                    }}
+                                    className="border-[1px] rounded-lg h-10 w-full"
+                                  >
+                                    <div
+                                      className={`font-semibold ${
+                                        selectedDate ? 'text-gray-700' : ''
+                                      }text-gray-400`}
+                                    >
+                                      {selectedDate || 'Select a date'}
+                                    </div>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="popover-content"
+                                  >
+                                    <Calendar
+                                      mode="single"
+                                      fromDate={new Date()}
+                                      disabled={isDateDisabled}
+                                      selected={
+                                        field.value
+                                          ? new Date(field.value)
+                                          : undefined
+                                      }
+                                      onDayClick={(date) => {
+                                        const formattedDate =
+                                          formatDateToLocal(date); // Format date in local time
+                                        setSelectedDate(formattedDate); // Update state
+                                        field.onChange(formattedDate); // Update form field
+                                        setCalenderOpen(false);
+                                      }}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
 
                       <FormField
@@ -567,16 +572,25 @@ const DoctorBookingPage: React.FC<{
                                 <SelectTrigger>
                                   <SelectValue placeholder="Choose time" />
                                 </SelectTrigger>
-                                <SelectContent className="space-y-4">
-                                  {availableTimeSlots?.map((slot) => (
-                                    <SelectItem
-                                      key={slot.id}
-                                      value={slot.appointmentTime}
-                                    >
-                                      {formatTime(slot.appointmentTime)}
+                                {availableTimeSlots &&
+                                availableTimeSlots?.length > 0 ? (
+                                  <SelectContent className="space-y-4">
+                                    {availableTimeSlots?.map((slot) => (
+                                      <SelectItem
+                                        key={slot.id}
+                                        value={slot.appointmentTime}
+                                      >
+                                        {formatTime(slot.appointmentTime)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                ) : (
+                                  <SelectContent>
+                                    <SelectItem value=" " disabled>
+                                      No available time slots
                                     </SelectItem>
-                                  ))}
-                                </SelectContent>
+                                  </SelectContent>
+                                )}
                               </Select>
                             </FormControl>
                             <FormMessage />

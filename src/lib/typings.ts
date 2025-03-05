@@ -71,7 +71,7 @@ export interface PetResponses {
   weight: number;
   medicalConditions: string[];
   userId: number | null;
-  genderType: 'MALE' | 'FEMALE';
+  genderType: "MALE" | "FEMALE";
   image: string;
   createdDate: string | null;
   updatedDate: string | null;
@@ -85,12 +85,18 @@ export interface Appointment {
   userResponse: UserResponse;
   petResponse: PetResponses;
   bookingDate: string;
-  bookingStatus: 'CONFIRMED' | 'PENDING' | 'CANCELED';
-  medium: 'VIRTUAL' | 'IN_PERSON';
+  bookingStatus: "CONFIRMED" | "PENDING" | "CANCELED";
+  medium: "VIRTUAL" | "IN_PERSON";
   reason: string;
   note: string;
   createdDate: string;
   updatedDate: string;
+  referenceNo: string;
+  hospitalResponse: {
+    active: boolean;
+    address:string;
+    name: string
+  }
 }
 
 // Rest of
@@ -224,7 +230,14 @@ export type DoctorCreate = {
 
 export type DayTimeSlotResponses = {
   day: string;
-  timeSlots: { startTime: string; endTime: string; hospitalId: number; hospitalName: string }[] | [];
+  timeSlots:
+    | {
+        startTime: string;
+        endTime: string;
+        hospitalId: number;
+        hospitalName: string;
+      }[]
+    | [];
   appointmentTimes: string[];
 };
 
@@ -290,11 +303,10 @@ export type Specialization = {
   active: boolean;
 };
 
-
-export type City={
-  id:number;
-  name:string;
-}
+export type City = {
+  id: number;
+  name: string;
+};
 export type AppointmentCreate = {
   id?: string;
   bookingTimeId?: number;
@@ -381,8 +393,6 @@ export type User = {
   role: string;
   active: boolean;
 };
-
-
 
 export type doctorResponses = {
   id: number;

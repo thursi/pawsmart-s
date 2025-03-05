@@ -55,3 +55,42 @@ export async function bookingById(id: string) {
     console.log("Error archiving bookings", error);
   }
 }
+
+export async function createPaymentSession(bookingId:number) {
+  try{
+    const response = await axiosInstance.post(`/api/v1/payment?bookingId=${bookingId}`);
+    return response?.data;
+  } catch (error) {
+    console.log("Error archiving bookings", error);
+    return {
+      success: false,
+      message: "Error creating payment session",
+    }
+  }
+}
+
+export async function cancelPaymentStatus(bookingId:number) {
+  try{
+    const response = await axiosInstance.get(`/api/v1/payment/cancel?bookingId=${bookingId}`);
+    return response?.data;
+  } catch (error) {
+    console.log("Error archiving bookings", error);
+    return {
+      success: false,
+      message: "Error cancelling payment status",
+    }
+  }
+}
+
+export async function approvePaymentStatus(bookingId:number) {
+  try{
+    const response = await axiosInstance.get(`/api/v1/payment/success?bookingId=${bookingId}`);
+    return response?.data;
+  } catch (error) {
+    console.log("Error archiving bookings", error);
+    return {
+      success: false,
+      message: "Error approving payment status",
+    }
+  }
+}
