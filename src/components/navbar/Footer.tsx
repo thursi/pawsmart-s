@@ -113,7 +113,7 @@ const ModernFooter = () => {
 
             <div className="flex flex-col gap-y-3">
               <h2 className="font-bold text-lg md:text-xl uppercase">
-                About Vetster
+                About PawSmart
               </h2>
               <ul className="flex flex-col gap-y-2">
                 {navigation.about.map((item) => (
@@ -169,7 +169,7 @@ const ModernFooter = () => {
             <div className=" flex flex-col md:flex-row justify-between items-start md:items-center">
               <div className="mb-4 md:mb-0">
                 <p className="text-sm md:text-base">
-                  Email: Woofandmeows@paesmart.ai
+                  Email: woofsandmeows@pawsmart.ai
                 </p>
                 <p className="text-sm md:text-base">Phone: +1 647-684-4584</p>
               </div>
@@ -193,7 +193,7 @@ const ModernFooter = () => {
       </div>
 
       <div className="bg-black rounded-lg p-4 text-center text-sm">
-        <p className="mb-2">© 2025 PawSmart. All rights reserved.</p>
+        <p className="mb-2">© 2025 PawSmart Inc. All rights reserved.</p>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
           {legalLinks.map((link) => (
             <a
